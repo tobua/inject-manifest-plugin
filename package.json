@@ -51,7 +51,7 @@
     "extends": "./node_modules/padua/configuration/eslint.cjs"
   },
   "publishConfig": {
-    "provenance": true
+    "provenance": false
   },
   "engines": {
     "node": ">= 16"
