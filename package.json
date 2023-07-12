@@ -12,16 +12,17 @@
   },
   "padua": {
     "esbuild": {
-      "platform": "node"
+      "platform": "node",
+      "format": "esm"
     }
   },
   "dependencies": {
     "minimatch": "^9.0.3",
-    "schema-utils": "^4.2.0"
+    "schema-utils": "version-3"
   },
   "peerDependencies": {
-    "@rspack/core": "> 0.2",
-    "webpack": "> 5.9"
+    "@rspack/core": ">= 0.2.0",
+    "webpack": ">= 5.9.0"
   },
   "type": "module",
   "sideEffects": false,
@@ -35,6 +36,14 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "pwa",
+    "webpack",
+    "rspack",
+    "manifest",
+    "inject-plugin",
+    "workbox"
   ],
   "devDependencies": {
     "@rspack/core": "^0.2.6",
@@ -51,7 +60,7 @@
     "extends": "./node_modules/padua/configuration/eslint.cjs"
   },
   "publishConfig": {
-    "provenance": false
+    "provenance": true
   },
   "engines": {
     "node": ">= 16"
