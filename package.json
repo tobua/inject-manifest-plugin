@@ -1,0 +1,67 @@
+{
+  "name": "inject-manifest-plugin",
+  "description": "Injects a Workbox PWA manifest into a Service Worker.",
+  "version": "0.0.0-generated",
+  "repository": "tobua/inject-manifest-plugin",
+  "license": "MIT",
+  "author": "Matthias Giger",
+  "scripts": {
+    "build": "padua build",
+    "start": "padua watch",
+    "test": "vitest run"
+  },
+  "padua": {
+    "esbuild": {
+      "platform": "node"
+    }
+  },
+  "dependencies": {
+    "minimatch": "^9.0.3",
+    "schema-utils": "^4.2.0"
+  },
+  "peerDependencies": {
+    "@rspack/core": "> 0.2",
+    "webpack": "> 5.9"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@rspack/core": "^0.2.6",
+    "@types/node": "^20.4.1",
+    "deepmerge-ts": "^5.1.0",
+    "html-webpack-plugin": "^5.5.3",
+    "jest-fixture": "^4.1.0",
+    "padua": "^2.0.1",
+    "vitest": "^0.33.0",
+    "webpack": "^5.88.1"
+  },
+  "prettier": "padua/configuration/.prettierrc.json",
+  "eslintConfig": {
+    "extends": "./node_modules/padua/configuration/eslint.cjs"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "peerDependenciesMeta": {
+    "@rspack/core": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
+  }
+}
