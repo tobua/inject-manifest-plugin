@@ -8,6 +8,8 @@ Injects a Workbox PWA manifest into a Service Worker. Alternative for the Inject
 
 - Supports **webpack** and **Rspack**
 - Compatible with Google Workbox
+- Check out the [demo](https://papua-pwa.vercel.app) or the [papua PWA template](https://github.com/tobua/papua/tree/main/template/pwa)
+  - Get started by running `npm init now papua ./my-pwa pwa`
 
 ## Usage
 
