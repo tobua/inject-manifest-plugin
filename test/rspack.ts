@@ -2,10 +2,8 @@ import { deepmerge } from 'deepmerge-ts'
 import { Configuration, rspack } from '@rspack/core'
 
 const defaultConfiguration: Configuration = {
-  // mode: 'development',
-  // devtool: undefined,
   builtins: {
-    html: [{ excludedChunks: ['service-worker'] }],
+    html: [{}], // Empty object creates a template.
   },
 }
 

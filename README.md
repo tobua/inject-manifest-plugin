@@ -13,8 +13,6 @@ Injects a Workbox PWA manifest into a Service Worker. Alternative for the Inject
 
 ## Usage
 
-When using `webpack` it's important to exclude the `service-worker` chunk from the HTML output.
-
 ```ts
 import webpack from 'webpack'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
@@ -23,7 +21,7 @@ import { InjectManifestPlugin } from 'inject-manifest-plugin'
 const configuration: webpack.Configuration = {
   plugins: [
     new InjectManifestPlugin(),
-    new HtmlWebpackPlugin({ excludeChunks: ['service-worker'] })
+    new HtmlWebpackPlugin()
   ],
 }
 
@@ -31,17 +29,15 @@ const configuration: webpack.Configuration = {
 webpack(configuration, (error, stats) => { ... })
 ```
 
-With `Rspack` the `excludedChunks` option in `builtins.html` will ensure that the Service Worker is installed through JavaScript.
-
 ```ts
 import { Configuration, rspack } from '@rspack/core'
 import { InjectManifestPlugin } from 'inject-manifest-plugin'
 
 const configuration: Configuration = {
   builtins: {
-    html: [{ excludedChunks: ['service-worker'] }],
+    html: [{}], // Empty object creates a default html template (index.html).
   },
-  plugins: [ new InjectManifestPlugin() ],
+  plugins: [new InjectManifestPlugin()],
 }
 
 // When using programmatic API, otherwise place configuration in rspack.config.js.

@@ -10,6 +10,7 @@ import {
 } from 'jest-fixture'
 import { copyFileSync, rmSync } from 'fs'
 import { join } from 'path'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
 import { InjectManifestPlugin } from '../index'
 import webpack from './webpack'
 import rspack from './rspack'
@@ -293,3 +294,33 @@ run('Compiles Service Worker setup with workbox dependencies.', async (build) =>
   const manifest = findManifest(workerContents)
   expect(Object.keys(manifest).length).toBe(2)
 })
+
+run(
+  'When using multiple templates the worker chunk is excluded from every template.',
+  async (build, type) => {
+    const { dist } = prepare([
+      packageJson('basic'),
+      file('index.js', "console.log('main-entry')"),
+      file('service-worker.js', "console.log('Hello World!', self.INJECT_MANIFEST_PLUGIN)"),
+    ])
+
+    const plugins: any[] = [new InjectManifestPlugin()]
+
+    if (type === 'webpack') {
+      plugins.push(new HtmlWebpackPlugin({ title: 'Webpack', filename: 'second.html' }))
+    }
+
+    await build({
+      entry: { main: './index.js' },
+      plugins,
+      ...(type === 'rspack' && {
+        builtins: { html: [{ title: 'Rspack', filename: 'second.html' }] },
+      }),
+    })
+
+    expect(listFilesMatching('**/*', dist).length).toBe(4)
+
+    expect(readFile('dist/index.html')).not.toContain('service-worker.js')
+    expect(readFile('dist/second.html')).not.toContain('service-worker.js')
+  }
+)

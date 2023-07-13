@@ -3,9 +3,7 @@ import webpack from 'webpack'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 
 const defaultConfiguration: webpack.Configuration = {
-  // mode: 'development',
-  // devtool: undefined,
-  plugins: [new HtmlWebpackPlugin({ excludeChunks: ['service-worker'] })],
+  plugins: [new HtmlWebpackPlugin()],
 }
 
 export default (configuration: webpack.Configuration[]) =>

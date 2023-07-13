@@ -1,8 +1,9 @@
 import { createHash } from 'crypto'
-import { type Compiler as WebpackCompiler } from 'webpack'
-import { type Compiler as RspackCompiler } from '@rspack/core'
+import type { WebpackOptionsNormalized, Compiler as WebpackCompiler } from 'webpack'
+import type { RspackOptionsNormalized, Compiler as RspackCompiler } from '@rspack/core'
 import { validate } from 'schema-utils'
 import { minimatch } from 'minimatch'
+import { loadHtmlWebpackPluginIfInstalled } from './helper'
 
 const schema = {
   type: 'object',
@@ -59,6 +60,46 @@ export class InjectManifestPlugin {
     // @ts-ignore
     compiler.hooks.entryOption.tap(this.name, (_, entry) => {
       entry['service-worker'] = { import: [this.options.file] }
+    })
+
+    // Exclude worker chunk from being emitted into templates.
+    compiler.hooks.environment.tap(this.name, async () => {
+      const isRspack = compiler.webpack.rspackVersion
+      const { options } = compiler
+
+      if (isRspack) {
+        const htmlTemplates = (options as RspackOptionsNormalized).builtins?.html
+
+        // builtins.html is always an array.
+        if (htmlTemplates && htmlTemplates.length > 0) {
+          htmlTemplates.forEach((template) => {
+            if (Array.isArray(template.excludedChunks)) {
+              if (!template.excludedChunks.includes('service-worker')) {
+                template.excludedChunks.push('service-worker')
+              }
+            } else {
+              template.excludedChunks = ['service-worker']
+            }
+          })
+        }
+      } else {
+        const { plugins } = options as WebpackOptionsNormalized
+        const HtmlWebpackPlugin = await loadHtmlWebpackPluginIfInstalled()
+
+        if (plugins && plugins.length > 0 && HtmlWebpackPlugin) {
+          plugins.forEach((plugin) => {
+            if (plugin instanceof HtmlWebpackPlugin) {
+              if (Array.isArray(plugin.options.excludeChunks)) {
+                if (!plugin.options.excludeChunks.includes('service-worker')) {
+                  plugin.options.excludeChunks.push('service-worker')
+                }
+              } else {
+                plugin.options.excludeChunks = ['service-worker']
+              }
+            }
+          })
+        }
+      }
     })
 
     if (this.options.removeHash) {
