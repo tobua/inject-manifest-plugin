@@ -8,10 +8,12 @@ import {
   listFilesMatching,
   readFile,
 } from 'jest-fixture'
-import { rmSync } from 'fs'
+import { copyFileSync, rmSync } from 'fs'
+import { join } from 'path'
 import { InjectManifestPlugin } from '../index'
 import webpack from './webpack'
 import rspack from './rspack'
+import { findManifest } from './helper'
 
 registerVitest(beforeEach, afterEach, vi)
 
@@ -31,24 +33,6 @@ const run = async (
   test(`rspack: ${name}`, async () => {
     await runner(rspack, 'rspack')
   })
-}
-
-const findManifest = (source: string): { [key: string]: string } => {
-  const regex = /\[[^\]]*(?:\{'url':'[^']*.js','revision':'[a-f0-9]{32}'\}[^\]]*)*\]/
-  const matches = source.match(regex)
-
-  if (matches) {
-    const snippet = matches[0]
-    // @ts-ignore
-    const data = JSON.parse(snippet.replaceAll("'", '"')) as { url: string; revision: string }[]
-    const result = {}
-    data.forEach((entry) => {
-      result[entry.url] = entry.revision
-    })
-    return result
-  }
-
-  return {}
 }
 
 run('Regular build is working fine.', async (build) => {
@@ -219,6 +203,38 @@ run('Service worker path can be customized.', async (build) => {
   expect(manifest['index.html'].length).toBe(32)
 })
 
+run('Works with relative "file" paths.', async (build) => {
+  prepare([
+    packageJson('basic'),
+    file('index.js', ''),
+    file('worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+  ])
+
+  await build({
+    entry: { main: './index.js' },
+    plugins: [new InjectManifestPlugin({ file: './worker.js' })],
+  })
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+})
+
+run('Works with absolute "file" paths.', async (build) => {
+  prepare([
+    packageJson('basic'),
+    file('index.js', ''),
+    file('worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+  ])
+
+  await build({
+    entry: { main: './index.js' },
+    plugins: [new InjectManifestPlugin({ file: join(process.cwd(), 'worker.js') })],
+  })
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+})
+
 run('Option to remove a hash from the service worker can be set.', async (build) => {
   const { dist } = prepare([
     packageJson('basic'),
@@ -250,4 +266,30 @@ run('Option to remove a hash from the service worker can be set.', async (build)
   expect(distFiles.find((filename) => filename.match(/^main\.[0-9a-f]{20}\.js$/))).toBeDefined()
   expect(distFiles).toContain('service-worker.js')
   expect(distFiles).toContain('index.html')
+})
+
+run('Compiles Service Worker setup with workbox dependencies.', async (build) => {
+  prepare([packageJson('basic'), file('index.js', 'console.log("empty")')])
+
+  copyFileSync(
+    join(process.cwd(), '../../data/service-worker.js'),
+    join(process.cwd(), 'service-worker.js')
+  )
+
+  await build({
+    entry: { main: './index.js' },
+    plugins: [new InjectManifestPlugin()],
+    // Avoid mangling for readable output.
+    mode: 'development',
+    devtool: false,
+  })
+
+  const workerContents = readFile('dist/service-worker.js')
+
+  // From workbox dependencies.
+  expect(workerContents).toContain('createHandlerBoundToURL')
+  expect(workerContents).toContain('removeIgnoredSearchParams')
+
+  const manifest = findManifest(workerContents)
+  expect(Object.keys(manifest).length).toBe(2)
 })

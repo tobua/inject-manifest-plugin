@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
-import { type Compiler } from 'webpack'
+import { type Compiler as WebpackCompiler } from 'webpack'
+import { type Compiler as RspackCompiler } from '@rspack/core'
 import { validate } from 'schema-utils'
 import { minimatch } from 'minimatch'
 
@@ -54,7 +55,7 @@ export class InjectManifestPlugin {
     this.options = { ...InjectManifestPlugin.defaultOptions, ...options }
   }
 
-  apply(compiler: Compiler) {
+  apply(compiler: WebpackCompiler | RspackCompiler) {
     // @ts-ignore
     compiler.hooks.entryOption.tap(this.name, (_, entry) => {
       entry['service-worker'] = { import: [this.options.file] }
@@ -101,7 +102,7 @@ export class InjectManifestPlugin {
 
           Object.keys(assets).forEach((filename) => {
             if (filename.endsWith('.js')) {
-              const source = assets[filename].source() as string
+              const source = assets[filename].source().toString() as string
               if (regex.test(source)) {
                 compilation.updateAsset(
                   filename,

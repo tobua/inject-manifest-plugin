@@ -46,14 +46,20 @@
     "workbox"
   ],
   "devDependencies": {
-    "@rspack/core": "^0.2.6",
-    "@types/node": "^20.4.1",
+    "@rspack/core": "^0.2.7",
+    "@types/node": "^20.4.2",
     "deepmerge-ts": "^5.1.0",
     "html-webpack-plugin": "^5.5.3",
     "jest-fixture": "^4.1.0",
     "padua": "^2.0.1",
+    "url-join": "^5.0.0",
     "vitest": "^0.33.0",
-    "webpack": "^5.88.1"
+    "webpack": "^5.88.1",
+    "workbox-core": "^7.0.0",
+    "workbox-expiration": "^7.0.0",
+    "workbox-precaching": "^7.0.0",
+    "workbox-routing": "^7.0.0",
+    "workbox-strategies": "^7.0.0"
   },
   "prettier": "padua/configuration/.prettierrc.json",
   "eslintConfig": {
