@@ -25,6 +25,10 @@ const schema = {
       description: 'Removes hash in the emitted filename of the service worker.',
       type: 'boolean',
     },
+    chunkName: {
+      description: 'The name of the service worker chunk.',
+      type: 'string',
+    },
   },
   additionalProperties: false,
 } as const
@@ -34,17 +38,20 @@ type Options = {
   injectionPoint: string
   exclude: string[]
   removeHash: boolean
+  chunkName: string
 }
 
 export class InjectManifestPlugin {
   name = 'InjectManifestPlugin'
   options: Options
+  outputFilename: string
 
   static defaultOptions = {
     file: './service-worker.js',
     injectionPoint: 'self.INJECT_MANIFEST_PLUGIN',
     exclude: [],
     removeHash: false,
+    chunkName: 'service-worker',
   }
 
   constructor(options = {}) {
@@ -54,12 +61,13 @@ export class InjectManifestPlugin {
     })
 
     this.options = { ...InjectManifestPlugin.defaultOptions, ...options }
+    this.outputFilename = `${this.options.chunkName}.js`
   }
 
   apply(compiler: WebpackCompiler | RspackCompiler) {
     // @ts-ignore
     compiler.hooks.entryOption.tap(this.name, (_, entry) => {
-      entry['service-worker'] = { import: [this.options.file] }
+      entry[this.options.chunkName] = { import: [this.options.file] }
     })
 
     // Exclude worker chunk from being emitted into templates.
@@ -74,11 +82,11 @@ export class InjectManifestPlugin {
         if (htmlTemplates && htmlTemplates.length > 0) {
           htmlTemplates.forEach((template) => {
             if (Array.isArray(template.excludedChunks)) {
-              if (!template.excludedChunks.includes('service-worker')) {
-                template.excludedChunks.push('service-worker')
+              if (!template.excludedChunks.includes(this.options.chunkName)) {
+                template.excludedChunks.push(this.options.chunkName)
               }
             } else {
-              template.excludedChunks = ['service-worker']
+              template.excludedChunks = [this.options.chunkName]
             }
           })
         }
@@ -90,11 +98,11 @@ export class InjectManifestPlugin {
           plugins.forEach((plugin) => {
             if (plugin instanceof HtmlWebpackPlugin) {
               if (Array.isArray(plugin.options.excludeChunks)) {
-                if (!plugin.options.excludeChunks.includes('service-worker')) {
-                  plugin.options.excludeChunks.push('service-worker')
+                if (!plugin.options.excludeChunks.includes(this.options.chunkName)) {
+                  plugin.options.excludeChunks.push(this.options.chunkName)
                 }
               } else {
-                plugin.options.excludeChunks = ['service-worker']
+                plugin.options.excludeChunks = [this.options.chunkName]
               }
             }
           })
@@ -106,10 +114,10 @@ export class InjectManifestPlugin {
       compiler.hooks.emit.tap(this.name, (compilation) => {
         const { assets } = compilation
         const filenames = Object.keys(assets)
-        const worker = filenames.find((name) => name.includes('service-worker'))
+        const worker = filenames.find((name) => name.includes(this.options.chunkName))
         if (worker.length > 32) {
           const source = assets[worker]
-          assets['service-worker.js'] = source
+          assets[this.outputFilename] = source
           delete assets[worker]
         }
       })
@@ -122,13 +130,13 @@ export class InjectManifestPlugin {
           stage: 1000,
           additionalAssets: undefined, // Run again when more assets are added later.
         },
-        (assets) => {
+        (assets: Record<string, any>) => {
           const filenames = Object.keys(assets)
           const manifest = JSON.stringify(
             filenames
               .filter(
                 (filename) =>
-                  filename !== 'service-worker.js' &&
+                  filename !== this.outputFilename &&
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true })
                   )
@@ -142,7 +150,7 @@ export class InjectManifestPlugin {
           const regex = new RegExp(this.options.injectionPoint)
 
           Object.keys(assets).forEach((filename) => {
-            if (filename.endsWith('.js')) {
+            if (filename.endsWith(this.outputFilename)) {
               const source = assets[filename].source().toString() as string
               if (regex.test(source)) {
                 compilation.updateAsset(

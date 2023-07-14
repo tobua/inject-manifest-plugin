@@ -324,3 +324,25 @@ run(
     expect(readFile('dist/second.html')).not.toContain('service-worker.js')
   }
 )
+
+run('Manifest can only be injected into Service Worker file.', async (build) => {
+  prepare([
+    packageJson('basic'),
+    file('src/index.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+    file('service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+  ])
+
+  const buildResult = await build({
+    plugins: [new InjectManifestPlugin()],
+  })
+
+  expect(buildResult).toBe('success')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+
+  expect(Object.keys(manifest).length).toBe(2)
+
+  const manifestJavaScript = findManifest(readFile('dist/main.js'))
+
+  expect(Object.keys(manifestJavaScript).length).toBe(0)
+})
