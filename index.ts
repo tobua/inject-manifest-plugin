@@ -3,7 +3,7 @@ import type { WebpackOptionsNormalized, Compiler as WebpackCompiler } from 'webp
 import type { RspackOptionsNormalized, Compiler as RspackCompiler } from '@rspack/core'
 import { validate } from 'schema-utils'
 import { minimatch } from 'minimatch'
-import { loadHtmlWebpackPluginIfInstalled } from './helper'
+import { loadHtmlWebpackPluginIfInstalled, removeHash } from './helper'
 
 const schema = {
   type: 'object',
@@ -139,7 +139,8 @@ export class InjectManifestPlugin {
                   filename !== this.outputFilename &&
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true })
-                  )
+                  ) &&
+                  (!this.options.removeHash || !removeHash(filename).endsWith(this.outputFilename))
               )
               .map((filename) => ({
                 url: filename,
@@ -150,7 +151,10 @@ export class InjectManifestPlugin {
           const regex = new RegExp(this.options.injectionPoint)
 
           Object.keys(assets).forEach((filename) => {
-            if (filename.endsWith(this.outputFilename)) {
+            const filenameMatch = this.options.removeHash ? removeHash(filename) : filename
+            const isWorkerFilename = filenameMatch.endsWith(this.outputFilename)
+
+            if (isWorkerFilename) {
               const source = assets[filename].source().toString() as string
               if (regex.test(source)) {
                 compilation.updateAsset(

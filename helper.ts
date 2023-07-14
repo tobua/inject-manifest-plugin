@@ -6,3 +6,6 @@ export async function loadHtmlWebpackPluginIfInstalled() {
     return null
   }
 }
+
+export const removeHash = (filename: string) =>
+  filename.replace(/(.+)\.[0-9a-f]{20}(\.js)$/, '$1$2')

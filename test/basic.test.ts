@@ -240,7 +240,7 @@ run('Option to remove a hash from the service worker can be set.', async (build)
   const { dist } = prepare([
     packageJson('basic'),
     file('index.js', "console.log('entry')"),
-    file('service-worker.js', "console.log('worker')"),
+    file('service-worker.js', "console.log('worker', self.INJECT_MANIFEST_PLUGIN)"),
   ])
 
   const buildResult = await build({
@@ -267,6 +267,9 @@ run('Option to remove a hash from the service worker can be set.', async (build)
   expect(distFiles.find((filename) => filename.match(/^main\.[0-9a-f]{20}\.js$/))).toBeDefined()
   expect(distFiles).toContain('service-worker.js')
   expect(distFiles).toContain('index.html')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
 })
 
 run('Compiles Service Worker setup with workbox dependencies.', async (build) => {
