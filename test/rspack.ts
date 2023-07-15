@@ -9,7 +9,18 @@ const defaultConfiguration: Configuration = {
 
 export default (configuration: Configuration) =>
   new Promise<'error' | 'success'>((done) => {
-    rspack(deepmerge(configuration, defaultConfiguration), (error, stats) => {
+    let mergedConfiguration
+
+    if (Array.isArray(configuration)) {
+      configuration.forEach((innerConfiguration, index) => {
+        configuration[index] = deepmerge(innerConfiguration, defaultConfiguration)
+      })
+      mergedConfiguration = configuration
+    } else {
+      mergedConfiguration = deepmerge(configuration, defaultConfiguration)
+    }
+
+    rspack(mergedConfiguration, (error, stats) => {
       if (error || (stats && stats.hasErrors())) {
         // eslint-disable-next-line no-console
         console.log(error, stats && stats.hasErrors() && stats.toJson({}, true).errors)

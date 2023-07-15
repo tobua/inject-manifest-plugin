@@ -272,6 +272,43 @@ run('Option to remove a hash from the service worker can be set.', async (build)
   expect(Object.keys(manifest).length).toBe(2)
 })
 
+run('Various hash types are supported.', async (build) => {
+  const { dist } = prepare([
+    packageJson('basic'),
+    file('index.js', "console.log('entry')"),
+    file('service-worker.js', "console.log('worker', self.INJECT_MANIFEST_PLUGIN)"),
+  ])
+
+  const buildResult = await build({
+    entry: ['./index.js'],
+    output: {
+      // Tested: [chunkhash] [contenthash] [hash] [fullhash] [modulehash] (empty)
+      filename: '[name].[fullhash].js',
+    },
+    plugins: [
+      new InjectManifestPlugin({
+        removeHash: true,
+      }),
+    ],
+  })
+
+  expect(buildResult).toBe('success')
+
+  const files = listFilesMatching('*', '.')
+
+  expect(files.length).toBe(3)
+
+  const distFiles = listFilesMatching('**/*', dist)
+
+  expect(distFiles.length).toBe(3)
+  expect(distFiles.find((filename) => filename.match(/^main\.[0-9a-f]{20}\.js$/))).toBeDefined()
+  expect(distFiles).toContain('service-worker.js')
+  expect(distFiles).toContain('index.html')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+})
+
 run('Compiles Service Worker setup with workbox dependencies.', async (build) => {
   prepare([packageJson('basic'), file('index.js', 'console.log("empty")')])
 
@@ -348,4 +385,76 @@ run('Manifest can only be injected into Service Worker file.', async (build) => 
   const manifestJavaScript = findManifest(readFile('dist/main.js'))
 
   expect(Object.keys(manifestJavaScript).length).toBe(0)
+})
+
+run(
+  'Service Worker only injected into configurations where the plugin is added.',
+  async (build) => {
+    prepare([
+      packageJson('basic'),
+      file('index.js', ''),
+      file('service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+      file('extension/index.js', ''),
+      file('extension/service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+    ])
+
+    await build([
+      {
+        entry: { main: './index.js' },
+        plugins: [new InjectManifestPlugin()],
+      },
+      {
+        context: join(process.cwd(), 'extension'),
+        entry: { ui: './index.js' },
+        output: {
+          path: join(process.cwd(), 'extension/dist'),
+        },
+        // plugins: [new InjectManifestPlugin()],
+      },
+    ])
+
+    const allFiles = listFilesMatching('**/*', '.')
+
+    expect(allFiles).toContain('extension/dist/ui.js')
+    expect(allFiles).not.toContain('extension/dist/service-worker.js')
+
+    const manifest = findManifest(readFile('dist/service-worker.js'))
+    expect(Object.keys(manifest).length).toBe(2)
+  }
+)
+
+run('Plugin can be added to multiple configurations.', async (build) => {
+  prepare([
+    packageJson('basic'),
+    file('index.js', ''),
+    file('service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+    file('extension/index.js', ''),
+    file('extension/service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+  ])
+
+  await build([
+    {
+      entry: { main: './index.js' },
+      plugins: [new InjectManifestPlugin()],
+    },
+    {
+      context: join(process.cwd(), 'extension'),
+      entry: { ui: './index.js' },
+      output: {
+        path: join(process.cwd(), 'extension/dist'),
+      },
+      plugins: [new InjectManifestPlugin()],
+    },
+  ])
+
+  const allFiles = listFilesMatching('**/*', '.')
+
+  expect(allFiles).toContain('extension/dist/ui.js')
+  expect(allFiles).toContain('extension/dist/service-worker.js')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+
+  const manifestExtension = findManifest(readFile('extension/dist/service-worker.js'))
+  expect(Object.keys(manifestExtension).length).toBe(2)
 })

@@ -1,3 +1,5 @@
+import { existsSync } from 'fs'
+import { isAbsolute, join } from 'path'
 import { createHash } from 'crypto'
 import type { WebpackOptionsNormalized, Compiler as WebpackCompiler } from 'webpack'
 import type { RspackOptionsNormalized, Compiler as RspackCompiler } from '@rspack/core'
@@ -65,9 +67,15 @@ export class InjectManifestPlugin {
   }
 
   apply(compiler: WebpackCompiler | RspackCompiler) {
-    // @ts-ignore
-    compiler.hooks.entryOption.tap(this.name, (_, entry) => {
-      entry[this.options.chunkName] = { import: [this.options.file] }
+    // @ts-ignore Will fail in Rspack with return value.
+    compiler.hooks.entryOption.tap(this.name, (contextPath, entry) => {
+      if (entry[this.options.chunkName]) return
+      const workerFileInContext = isAbsolute(this.options.file)
+        ? this.options.file
+        : join(contextPath, this.options.file)
+      if (existsSync(workerFileInContext)) {
+        entry[this.options.chunkName] = { import: [this.options.file] }
+      }
     })
 
     // Exclude worker chunk from being emitted into templates.
