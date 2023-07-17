@@ -35,7 +35,7 @@ const schema = {
   additionalProperties: false,
 } as const
 
-type Options = {
+type PluginOptions = {
   file: string
   injectionPoint: string
   exclude: string[]
@@ -43,12 +43,14 @@ type Options = {
   chunkName: string
 }
 
+export type Options = Partial<PluginOptions>
+
 export class InjectManifestPlugin {
   name = 'InjectManifestPlugin'
-  options: Options
+  options: PluginOptions
   outputFilename: string
 
-  static defaultOptions = {
+  static defaultOptions: PluginOptions = {
     file: './service-worker.js',
     injectionPoint: 'self.INJECT_MANIFEST_PLUGIN',
     exclude: [],
@@ -56,7 +58,7 @@ export class InjectManifestPlugin {
     chunkName: 'service-worker',
   }
 
-  constructor(options = {}) {
+  constructor(options: Options = {}) {
     validate(schema, options, {
       name: this.name,
       baseDataPath: 'options',

@@ -427,9 +427,12 @@ run('Plugin can be added to multiple configurations.', async (build) => {
   prepare([
     packageJson('basic'),
     file('index.js', ''),
-    file('service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+    file('service-worker.js', 'console.log("location_index", self.INJECT_MANIFEST_PLUGIN)'),
     file('extension/index.js', ''),
-    file('extension/service-worker.js', 'console.log(self.INJECT_MANIFEST_PLUGIN)'),
+    file(
+      'extension/service-worker.js',
+      'console.log("location_extension", self.INJECT_MANIFEST_PLUGIN)'
+    ),
   ])
 
   await build([
@@ -452,9 +455,15 @@ run('Plugin can be added to multiple configurations.', async (build) => {
   expect(allFiles).toContain('extension/dist/ui.js')
   expect(allFiles).toContain('extension/dist/service-worker.js')
 
-  const manifest = findManifest(readFile('dist/service-worker.js'))
+  const indexWorkerContents = readFile('dist/service-worker.js')
+  expect(indexWorkerContents).toContain('location_index')
+  expect(indexWorkerContents).not.toContain('location_extension')
+  const manifest = findManifest(indexWorkerContents)
   expect(Object.keys(manifest).length).toBe(2)
 
-  const manifestExtension = findManifest(readFile('extension/dist/service-worker.js'))
+  const extensionWorkerContents = readFile('extension/dist/service-worker.js')
+  expect(extensionWorkerContents).toContain('location_extension')
+  expect(extensionWorkerContents).not.toContain('location_index')
+  const manifestExtension = findManifest(extensionWorkerContents)
   expect(Object.keys(manifestExtension).length).toBe(2)
 })
