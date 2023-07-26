@@ -1,5 +1,5 @@
 export const findManifest = (source: string): { [key: string]: string } => {
-  const regex = /\[[^\]]*(?:\{'url':'[^']*.js','revision':'[a-f0-9]{32}'\}[^\]]*)+\]/
+  const regex = /\[[^\]]*(?:\{'url':'[^']*.*','revision':'[a-f0-9]{32}'\}[^\]]*)+\]/
   const matches = source.match(regex)
 
   if (matches) {
