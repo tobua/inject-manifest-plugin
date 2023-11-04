@@ -11,6 +11,7 @@ import {
 import { copyFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
+import { HtmlRspackPlugin } from '@rspack/core'
 import { InjectManifestPlugin } from '../index'
 import webpack from './webpack'
 import rspack from './rspack'
@@ -23,9 +24,9 @@ const [fixturePath] = environment('basic')
 const run = async (
   name: string,
   runner: (
-    build: (configuration: any) => Promise<'error' | 'success'>,
-    type: 'webpack' | 'rspack'
-  ) => Promise<void>
+    build: (configuration: any, defaultConfiguration?: any) => Promise<'error' | 'success'>,
+    type: 'webpack' | 'rspack',
+  ) => Promise<void>,
 ) => {
   test(`webpack: ${name}`, async () => {
     await runner(webpack, 'webpack')
@@ -314,7 +315,7 @@ run('Compiles Service Worker setup with workbox dependencies.', async (build) =>
 
   copyFileSync(
     join(process.cwd(), '../../data/service-worker.js'),
-    join(process.cwd(), 'service-worker.js')
+    join(process.cwd(), 'service-worker.js'),
   )
 
   await build({
@@ -348,22 +349,95 @@ run(
 
     if (type === 'webpack') {
       plugins.push(new HtmlWebpackPlugin({ title: 'Webpack', filename: 'second.html' }))
+      plugins.push(
+        new HtmlWebpackPlugin({
+          title: 'Webpack 2',
+          filename: 'third.html',
+          excludedChunks: ['my-chunk'],
+        }),
+      )
+    } else {
+      plugins.push(new HtmlRspackPlugin({ title: 'Rspack', filename: 'second.html' }))
+      plugins.push(
+        new HtmlRspackPlugin({
+          title: 'Rspack 2',
+          filename: 'third.html',
+          excludedChunks: ['my-chunk'],
+        }),
+      )
     }
 
     await build({
       entry: { main: './index.js' },
       plugins,
-      ...(type === 'rspack' && {
-        builtins: { html: [{ title: 'Rspack', filename: 'second.html' }] },
-      }),
     })
 
-    expect(listFilesMatching('**/*', dist).length).toBe(4)
+    expect(listFilesMatching('**/*', dist).length).toBe(5)
 
     expect(readFile('dist/index.html')).not.toContain('service-worker.js')
     expect(readFile('dist/second.html')).not.toContain('service-worker.js')
-  }
+    expect(readFile('dist/third.html')).not.toContain('service-worker.js')
+  },
 )
+
+run(
+  'When using multiple templates the worker chunk is excluded from every template.',
+  async (build, type) => {
+    const { dist } = prepare([
+      packageJson('basic'),
+      file('index.js', "console.log('main-entry')"),
+      file('service-worker.js', "console.log('Hello World!', self.INJECT_MANIFEST_PLUGIN)"),
+    ])
+
+    const plugins: any[] = [new InjectManifestPlugin()]
+
+    if (type === 'webpack') {
+      plugins.push(new HtmlWebpackPlugin({ title: 'Webpack', filename: 'first.html' }))
+    } else {
+      plugins.push(new HtmlRspackPlugin({ title: 'Rspack', filename: 'first.html' }))
+    }
+
+    await build(
+      {
+        entry: { main: './index.js' },
+        plugins,
+      },
+      // Empty default configuration.
+      {},
+    )
+
+    expect(listFilesMatching('**/*', dist).length).toBe(3)
+    // Only this html file available from plugin.
+    expect(readFile('dist/first.html')).not.toContain('service-worker.js')
+  },
+)
+
+run('Works with the legacy Rspack html builtins.', async (build, type) => {
+  const { dist } = prepare([
+    packageJson('basic'),
+    file('index.js', "console.log('main-entry')"),
+    file('service-worker.js', "console.log('Hello World!', self.INJECT_MANIFEST_PLUGIN)"),
+  ])
+
+  const plugins: any[] = [new InjectManifestPlugin()]
+
+  if (type === 'webpack') {
+    plugins.push(new HtmlWebpackPlugin({ title: 'Webpack', filename: 'second.html' }))
+  }
+
+  await build({
+    entry: { main: './index.js' },
+    plugins,
+    ...(type === 'rspack' && {
+      builtins: { html: [{ title: 'Rspack', filename: 'second.html' }] },
+    }),
+  })
+
+  expect(listFilesMatching('**/*', dist).length).toBe(4)
+
+  expect(readFile('dist/index.html')).not.toContain('service-worker.js')
+  expect(readFile('dist/second.html')).not.toContain('service-worker.js')
+})
 
 run('Manifest can only be injected into Service Worker file.', async (build) => {
   prepare([
@@ -420,7 +494,7 @@ run(
 
     const manifest = findManifest(readFile('dist/service-worker.js'))
     expect(Object.keys(manifest).length).toBe(2)
-  }
+  },
 )
 
 run('Plugin can be added to multiple configurations.', async (build) => {
@@ -431,7 +505,7 @@ run('Plugin can be added to multiple configurations.', async (build) => {
     file('extension/index.js', ''),
     file(
       'extension/service-worker.js',
-      'console.log("location_extension", self.INJECT_MANIFEST_PLUGIN)'
+      'console.log("location_extension", self.INJECT_MANIFEST_PLUGIN)',
     ),
   ])
 

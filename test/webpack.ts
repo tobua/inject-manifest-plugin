@@ -6,17 +6,20 @@ const defaultConfiguration: webpack.Configuration = {
   plugins: [new HtmlWebpackPlugin()],
 }
 
-export default (configuration: webpack.Configuration[] | webpack.Configuration) =>
+export default (
+  configuration: webpack.Configuration[] | webpack.Configuration,
+  extendedConfiguration = defaultConfiguration,
+) =>
   new Promise<'error' | 'success'>((done) => {
     let mergedConfiguration
 
     if (Array.isArray(configuration)) {
       configuration.forEach((innerConfiguration, index) => {
-        configuration[index] = deepmerge(innerConfiguration, defaultConfiguration)
+        configuration[index] = deepmerge(innerConfiguration, extendedConfiguration)
       })
       mergedConfiguration = configuration
     } else {
-      mergedConfiguration = deepmerge(configuration, defaultConfiguration)
+      mergedConfiguration = deepmerge(configuration, extendedConfiguration)
     }
 
     webpack(mergedConfiguration, (error, stats) => {

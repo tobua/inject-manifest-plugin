@@ -2,7 +2,12 @@ import { existsSync } from 'fs'
 import { isAbsolute, join } from 'path'
 import { createHash } from 'crypto'
 import type { WebpackOptionsNormalized, Compiler as WebpackCompiler } from 'webpack'
-import type { RspackOptionsNormalized, Compiler as RspackCompiler } from '@rspack/core'
+import {
+  RspackOptionsNormalized,
+  Compiler as RspackCompiler,
+  HtmlRspackPlugin,
+  HtmlRspackPluginOptions,
+} from '@rspack/core'
 import { validate } from 'schema-utils'
 import { minimatch } from 'minimatch'
 import { loadHtmlWebpackPluginIfInstalled, removeHash } from './helper'
@@ -87,8 +92,25 @@ export class InjectManifestPlugin {
 
       if (isRspack) {
         const htmlTemplates = (options as RspackOptionsNormalized).builtins?.html
+        const { plugins } = options as RspackOptionsNormalized
 
-        // builtins.html is always an array.
+        if (plugins && plugins.length > 0 && HtmlRspackPlugin) {
+          ;(plugins as unknown as { _options: HtmlRspackPluginOptions }[]).forEach((plugin) => {
+            // eslint-disable-next-line no-underscore-dangle
+            const htmlOptions = plugin._options
+            if (plugin instanceof HtmlRspackPlugin) {
+              if (Array.isArray(htmlOptions.excludedChunks)) {
+                if (!htmlOptions.excludedChunks.includes(this.options.chunkName)) {
+                  htmlOptions.excludedChunks.push(this.options.chunkName)
+                }
+              } else {
+                htmlOptions.excludedChunks = [this.options.chunkName]
+              }
+            }
+          })
+        }
+
+        // Legacy builtins.html, which is always an array.
         if (htmlTemplates && htmlTemplates.length > 0) {
           htmlTemplates.forEach((template) => {
             if (Array.isArray(template.excludedChunks)) {
@@ -148,14 +170,14 @@ export class InjectManifestPlugin {
                 (filename) =>
                   filename !== this.outputFilename &&
                   !this.options.exclude.some((matcher) =>
-                    minimatch(filename, matcher, { partial: true })
+                    minimatch(filename, matcher, { partial: true }),
                   ) &&
-                  (!this.options.removeHash || !removeHash(filename).endsWith(this.outputFilename))
+                  (!this.options.removeHash || !removeHash(filename).endsWith(this.outputFilename)),
               )
               .map((filename) => ({
                 url: filename,
                 revision: createHash('md5').update(assets[filename].source()).digest('hex'),
-              }))
+              })),
           ).replaceAll('"', "'") // Already escaped with double quotes in dev mode.
 
           const regex = new RegExp(this.options.injectionPoint)
@@ -169,12 +191,12 @@ export class InjectManifestPlugin {
               if (regex.test(source)) {
                 compilation.updateAsset(
                   filename,
-                  new compiler.webpack.sources.RawSource(source.replace(regex, manifest))
+                  new compiler.webpack.sources.RawSource(source.replace(regex, manifest)),
                 )
               }
             }
           })
-        }
+        },
       )
     })
   }
