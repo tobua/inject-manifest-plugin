@@ -1,9 +1,47 @@
 import { deepmerge } from 'deepmerge-ts'
-import { Configuration, rspack } from '@rspack/core'
+import { Configuration, HtmlRspackPlugin, rspack } from '@rspack/core'
 
 const defaultConfiguration: Configuration = {
-  builtins: {
-    html: [{}], // Empty object creates a template.
+  plugins: [new HtmlRspackPlugin()],
+  module: {
+    rules: [
+      {
+        test: /.jsx?$/,
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: {
+              syntax: 'ecmascript',
+              jsx: true,
+            },
+          },
+          transform: {
+            react: {
+              runtime: 'automatic',
+            },
+          },
+        },
+        type: 'javascript/auto',
+      },
+      {
+        test: /.tsx?$/,
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: {
+              syntax: 'typescript',
+              jsx: true,
+            },
+          },
+          transform: {
+            react: {
+              runtime: 'automatic',
+            },
+          },
+        },
+        type: 'javascript/auto',
+      },
+    ],
   },
 }
 

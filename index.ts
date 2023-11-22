@@ -87,7 +87,7 @@ export class InjectManifestPlugin {
 
     // Exclude worker chunk from being emitted into templates.
     compiler.hooks.environment.tap(this.name, async () => {
-      const isRspack = compiler.webpack.rspackVersion
+      const isRspack = (compiler as RspackCompiler)?.webpack?.rspackVersion
       const { options } = compiler
 
       if (isRspack) {
