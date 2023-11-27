@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@rspack/core": "^0.4.0",
-    "@types/node": "^20.9.4",
+    "@types/node": "^20.10.0",
     "deepmerge-ts": "^5.1.0",
     "html-webpack-plugin": "^5.5.3",
     "jest-fixture": "^4.1.0",

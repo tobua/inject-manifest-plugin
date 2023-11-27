@@ -2,10 +2,10 @@ import { existsSync } from 'fs'
 import { isAbsolute, join } from 'path'
 import { createHash } from 'crypto'
 import type { WebpackOptionsNormalized, Compiler as WebpackCompiler } from 'webpack'
-import {
-  RspackOptionsNormalized,
+import rspack from '@rspack/core'
+import type {
   Compiler as RspackCompiler,
-  HtmlRspackPlugin,
+  RspackOptionsNormalized,
   HtmlRspackPluginOptions,
 } from '@rspack/core'
 import { validate } from 'schema-utils'
@@ -94,11 +94,11 @@ export class InjectManifestPlugin {
         const htmlTemplates = (options as RspackOptionsNormalized).builtins?.html
         const { plugins } = options as RspackOptionsNormalized
 
-        if (plugins && plugins.length > 0 && HtmlRspackPlugin) {
+        if (plugins && plugins.length > 0 && rspack.HtmlRspackPlugin) {
           ;(plugins as unknown as { _options: HtmlRspackPluginOptions }[]).forEach((plugin) => {
             // eslint-disable-next-line no-underscore-dangle
             const htmlOptions = plugin._options
-            if (plugin instanceof HtmlRspackPlugin) {
+            if (plugin instanceof rspack.HtmlRspackPlugin) {
               if (Array.isArray(htmlOptions.excludedChunks)) {
                 if (!htmlOptions.excludedChunks.includes(this.options.chunkName)) {
                   htmlOptions.excludedChunks.push(this.options.chunkName)
