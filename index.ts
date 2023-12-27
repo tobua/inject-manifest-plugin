@@ -10,7 +10,7 @@ import type {
 } from '@rspack/core'
 import { validate } from 'schema-utils'
 import { minimatch } from 'minimatch'
-import { loadHtmlWebpackPluginIfInstalled, removeHash } from './helper'
+import { isFileHashed, loadHtmlWebpackPluginIfInstalled, removeHash } from './helper'
 
 const schema = {
   type: 'object',
@@ -142,18 +142,17 @@ export class InjectManifestPlugin {
       }
     })
 
-    if (this.options.removeHash) {
-      compiler.hooks.emit.tap(this.name, (compilation) => {
-        const { assets } = compilation
-        const filenames = Object.keys(assets)
-        const worker = filenames.find((name) => name.includes(this.options.chunkName))
-        if (worker.length > 32) {
-          const source = assets[worker]
-          assets[this.outputFilename] = source
-          delete assets[worker]
-        }
-      })
-    }
+    // Always remove service-worker chunk hash.
+    compiler.hooks.emit.tap(this.name, (compilation) => {
+      const { assets } = compilation
+      const filenames = Object.keys(assets)
+      const worker = filenames.find((name) => name.includes(this.options.chunkName))
+      if (worker.length > 32) {
+        const source = assets[worker]
+        assets[this.outputFilename] = source
+        delete assets[worker]
+      }
+    })
 
     compiler.hooks.thisCompilation.tap(this.name, (compilation) => {
       compilation.hooks.processAssets.tap(
@@ -168,22 +167,26 @@ export class InjectManifestPlugin {
             filenames
               .filter(
                 (filename) =>
+                  // Remove service-worker chunk.
                   filename !== this.outputFilename &&
+                  removeHash(filename) !== this.outputFilename &&
+                  // Remove excludes.
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true }),
-                  ) &&
-                  (!this.options.removeHash || !removeHash(filename).endsWith(this.outputFilename)),
+                  ),
               )
               .map((filename) => ({
                 url: filename,
-                revision: createHash('md5').update(assets[filename].source()).digest('hex'),
+                revision: isFileHashed(filename)
+                  ? null
+                  : createHash('md5').update(assets[filename].source()).digest('hex'),
               })),
           ).replaceAll('"', "'") // Already escaped with double quotes in dev mode.
 
           const regex = new RegExp(this.options.injectionPoint)
 
           Object.keys(assets).forEach((filename) => {
-            const filenameMatch = this.options.removeHash ? removeHash(filename) : filename
+            const filenameMatch = removeHash(filename)
             const isWorkerFilename = filenameMatch.endsWith(this.outputFilename)
 
             if (isWorkerFilename) {

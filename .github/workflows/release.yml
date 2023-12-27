@@ -11,7 +11,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: npm install
       - name: 🛠️ Build
         run: npm run build

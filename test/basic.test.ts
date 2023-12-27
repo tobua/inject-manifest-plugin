@@ -541,3 +541,56 @@ run('Plugin can be added to multiple configurations.', async (build) => {
   const manifestExtension = findManifest(extensionWorkerContents)
   expect(Object.keys(manifestExtension).length).toBe(2)
 })
+
+// null for assets with hash.
+// https://developer.chrome.com/docs/workbox/modules/workbox-precaching/#explanation-of-the-precache-list
+run('Revision is set to null if assets already have a hash.', async (build) => {
+  const { dist } = prepare([
+    packageJson('basic-revision-null'),
+    file('index.js', "console.log('entry')"),
+    file('another.js', "console.log('another')"),
+    file('service-worker.js', "console.log('worker', self.INJECT_MANIFEST_PLUGIN)"),
+  ])
+
+  const buildResult = await build({
+    entry: { main: './index.js', another: './another.js' },
+    output: {
+      filename: '[name].[contenthash].js',
+    },
+    plugins: [
+      new InjectManifestPlugin({
+        removeHash: false,
+      }),
+    ],
+  })
+
+  expect(buildResult).toBe('success')
+
+  const files = listFilesMatching('*', '.')
+
+  expect(files.length).toBe(4)
+
+  const distFiles = listFilesMatching('**/*', dist)
+
+  expect(distFiles.length).toBe(4)
+  const mainFilename = distFiles.find((filename) =>
+    filename.match(/^main\.[0-9a-f]{20}\.js$/),
+  ) as string
+  expect(mainFilename).toBeDefined()
+  const anotherFilename = distFiles.find((filename) =>
+    filename.match(/^another\.[0-9a-f]{20}\.js$/),
+  ) as string
+  expect(anotherFilename).toBeDefined()
+
+  const serviceWorker = distFiles.find((filename) => filename.match(/^service-worker\.js$/))
+
+  expect(serviceWorker).toBeDefined()
+  expect(distFiles).toContain('index.html')
+
+  const manifest = findManifest(readFile(`dist/${serviceWorker}`))
+  expect(Object.keys(manifest).length).toBe(3)
+
+  expect(manifest['index.html'].length).toBe(32)
+  expect(manifest[mainFilename]).toBe(null)
+  expect(manifest[anotherFilename]).toBe(null)
+})
