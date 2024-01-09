@@ -412,33 +412,6 @@ run(
   },
 )
 
-run('Works with the legacy Rspack html builtins.', async (build, type) => {
-  const { dist } = prepare([
-    packageJson('basic'),
-    file('index.js', "console.log('main-entry')"),
-    file('service-worker.js', "console.log('Hello World!', self.INJECT_MANIFEST_PLUGIN)"),
-  ])
-
-  const plugins: any[] = [new InjectManifestPlugin()]
-
-  if (type === 'webpack') {
-    plugins.push(new HtmlWebpackPlugin({ title: 'Webpack', filename: 'second.html' }))
-  }
-
-  await build({
-    entry: { main: './index.js' },
-    plugins,
-    ...(type === 'rspack' && {
-      builtins: { html: [{ title: 'Rspack', filename: 'second.html' }] },
-    }),
-  })
-
-  expect(listFilesMatching('**/*', dist).length).toBe(4)
-
-  expect(readFile('dist/index.html')).not.toContain('service-worker.js')
-  expect(readFile('dist/second.html')).not.toContain('service-worker.js')
-})
-
 run('Manifest can only be injected into Service Worker file.', async (build) => {
   prepare([
     packageJson('basic'),
