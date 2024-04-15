@@ -91,7 +91,6 @@ export class InjectManifestPlugin {
       const { options } = compiler
 
       if (isRspack) {
-        const htmlTemplates = (options as RspackOptionsNormalized).builtins?.html
         const { plugins } = options as RspackOptionsNormalized
 
         if (plugins && plugins.length > 0 && rspack.HtmlRspackPlugin) {
@@ -106,19 +105,6 @@ export class InjectManifestPlugin {
               } else {
                 htmlOptions.excludedChunks = [this.options.chunkName]
               }
-            }
-          })
-        }
-
-        // Legacy builtins.html, which is always an array.
-        if (htmlTemplates && htmlTemplates.length > 0) {
-          htmlTemplates.forEach((template) => {
-            if (Array.isArray(template.excludedChunks)) {
-              if (!template.excludedChunks.includes(this.options.chunkName)) {
-                template.excludedChunks.push(this.options.chunkName)
-              }
-            } else {
-              template.excludedChunks = [this.options.chunkName]
             }
           })
         }

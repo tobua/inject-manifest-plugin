@@ -12,11 +12,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: npm install
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
       - name: 🛠️ Build
-        run: npm run build
+        run: bun run build
       - name: 🧪 Test
-        run: npm test
+        run: bun run test
       - uses: tobua/release-npm-action@v3
         with:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
