@@ -54,6 +54,7 @@ export class InjectManifestPlugin {
   name = 'InjectManifestPlugin'
   options: PluginOptions
   outputFilename: string
+  isRspack: boolean
 
   static defaultOptions: PluginOptions = {
     file: './service-worker.js',
@@ -87,17 +88,22 @@ export class InjectManifestPlugin {
 
     // Exclude worker chunk from being emitted into templates.
     compiler.hooks.environment.tap(this.name, async () => {
-      const isRspack = (compiler as RspackCompiler)?.webpack?.rspackVersion
+      this.isRspack = (compiler as RspackCompiler)?.webpack?.rspackVersion
       const { options } = compiler
+      const HtmlWebpackPlugin = await loadHtmlWebpackPluginIfInstalled()
 
-      if (isRspack) {
+      if (this.isRspack) {
         const { plugins } = options as RspackOptionsNormalized
 
         if (plugins && plugins.length > 0 && rspack.HtmlRspackPlugin) {
           ;(plugins as unknown as { _options: HtmlRspackPluginOptions }[]).forEach((plugin) => {
             // eslint-disable-next-line no-underscore-dangle
-            const htmlOptions = plugin._options
-            if (plugin instanceof rspack.HtmlRspackPlugin) {
+            const htmlOptions = plugin._options ?? (plugin as any).options
+            if (
+              plugin instanceof rspack.HtmlRspackPlugin ||
+              // NOTE imperfect HtmlWebpackPlugin detection compatible with Rsbuild.
+              (htmlOptions && htmlOptions.template)
+            ) {
               if (Array.isArray(htmlOptions.excludedChunks)) {
                 if (!htmlOptions.excludedChunks.includes(this.options.chunkName)) {
                   htmlOptions.excludedChunks.push(this.options.chunkName)
@@ -110,17 +116,17 @@ export class InjectManifestPlugin {
         }
       } else {
         const { plugins } = options as WebpackOptionsNormalized
-        const HtmlWebpackPlugin = await loadHtmlWebpackPluginIfInstalled()
 
         if (plugins && plugins.length > 0 && HtmlWebpackPlugin) {
           plugins.forEach((plugin) => {
-            if (plugin instanceof HtmlWebpackPlugin) {
-              if (Array.isArray(plugin.options.excludeChunks)) {
-                if (!plugin.options.excludeChunks.includes(this.options.chunkName)) {
-                  plugin.options.excludeChunks.push(this.options.chunkName)
+            if (plugin && plugin instanceof HtmlWebpackPlugin && plugin.options) {
+              const htmlOptions = plugin.options
+              if (Array.isArray(htmlOptions.excludedChunks)) {
+                if (!htmlOptions.excludeChunks.includes(this.options.chunkName)) {
+                  htmlOptions.excludeChunks.push(this.options.chunkName)
                 }
               } else {
-                plugin.options.excludeChunks = [this.options.chunkName]
+                htmlOptions.excludeChunks = [this.options.chunkName]
               }
             }
           })
@@ -129,18 +135,28 @@ export class InjectManifestPlugin {
     })
 
     // Always remove service-worker chunk hash.
-    compiler.hooks.emit.tap(this.name, (compilation) => {
+    compiler.hooks.emit.tap(this.name, (compilation: any) => {
       const { assets } = compilation
-      const filenames = Object.keys(assets)
+      const filenames = Array.isArray(assets) ? assets : Object.keys(assets)
       const worker = filenames.find((name) => name.includes(this.options.chunkName))
-      if (worker.length > 32) {
-        const source = assets[worker]
-        assets[this.outputFilename] = source
-        delete assets[worker]
+      if (worker) {
+        if (this.isRspack) {
+          const asset = compilation.getAsset(worker)
+          if (asset) {
+            compilation.renameAsset(asset.name, this.outputFilename)
+          }
+        } else if (worker !== this.outputFilename) {
+          const source = assets[worker]
+          assets[this.outputFilename] = source
+          delete assets[worker]
+        }
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('inject-manifest-plugin: service worker chunk not found.')
       }
     })
 
-    compiler.hooks.thisCompilation.tap(this.name, (compilation) => {
+    compiler.hooks.thisCompilation.tap(this.name, (compilation: any) => {
       compilation.hooks.processAssets.tap(
         {
           name: this.name,
@@ -156,6 +172,7 @@ export class InjectManifestPlugin {
                   // Remove service-worker chunk.
                   filename !== this.outputFilename &&
                   removeHash(filename) !== this.outputFilename &&
+                  !filename.includes('service-worker') &&
                   // Remove excludes.
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true }),
