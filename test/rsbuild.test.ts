@@ -13,17 +13,11 @@ environment('rsbuild')
 test('Basic example also works with Rsbuild.', async () => {
   prepare([
     packageJson('rsbuild'),
-    file('index.js', 'console.log("hello world")'),
+    file('src/index.js', 'console.log("hello world")'),
     file('service-worker.js', "console.log('worker', self.INJECT_MANIFEST_PLUGIN)"),
   ])
 
   const buildResult = await rsbuild({
-    source: {
-      entry: {
-        // TODO test with default entry.
-        index: './index.js',
-      },
-    },
     output: {
       sourceMap: {
         js: false,
@@ -38,6 +32,50 @@ test('Basic example also works with Rsbuild.', async () => {
 
   expect(buildResult).toBe('success')
   expect(existsSync('dist/static/js/index.js'))
+
+  const indexContents = readFile('dist/static/js/index.js')
+
+  expect(indexContents).toContain('"hello world"')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+  expect(Object.keys(manifest).some((assetName) => assetName.includes('service-worker'))).toBe(
+    false,
+  )
+})
+
+test('Rsbuild works with TypeScript entry.', async () => {
+  prepare([
+    packageJson('rsbuild'),
+    file('index.ts', 'console.log("hello world" as string)'),
+    file('service-worker.ts', "console.log('worker' as string, self.INJECT_MANIFEST_PLUGIN)"),
+  ])
+
+  const buildResult = await rsbuild({
+    source: {
+      entry: {
+        index: './index.ts',
+      },
+    },
+    output: {
+      sourceMap: {
+        js: false,
+      },
+    },
+    tools: {
+      rspack: {
+        plugins: [new InjectManifestPlugin({ file: './service-worker.ts' })],
+      },
+    },
+  })
+
+  expect(buildResult).toBe('success')
+  expect(existsSync('dist/static/js/index.js'))
+
+  const indexContents = readFile('dist/static/js/index.js')
+
+  expect(indexContents).toContain('"hello world"')
+  expect(indexContents).not.toContain('as string')
 
   const manifest = findManifest(readFile('dist/service-worker.js'))
   expect(Object.keys(manifest).length).toBe(2)

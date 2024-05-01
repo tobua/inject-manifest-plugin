@@ -29,7 +29,7 @@
     "jest-fixture": "^4.1.0",
     "padua": "^4.0.1",
     "url-join": "^5.0.0",
-    "vitest": "^1.5.2",
+    "vitest": "^1.5.3",
     "webpack": "^5.91.0",
     "workbox-core": "^7.1.0",
     "workbox-expiration": "^7.1.0",
