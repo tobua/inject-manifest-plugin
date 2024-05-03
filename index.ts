@@ -134,28 +134,7 @@ export class InjectManifestPlugin {
       }
     })
 
-    // Always remove service-worker chunk hash.
-    compiler.hooks.emit.tap(this.name, (compilation: any) => {
-      const { assets } = compilation
-      const filenames = Array.isArray(assets) ? assets : Object.keys(assets)
-      const worker = filenames.find((name) => name.includes(this.options.chunkName))
-      if (worker) {
-        if (this.isRspack) {
-          const asset = compilation.getAsset(worker)
-          if (asset) {
-            compilation.renameAsset(asset.name, this.outputFilename)
-          }
-        } else if (worker !== this.outputFilename) {
-          const source = assets[worker]
-          assets[this.outputFilename] = source
-          delete assets[worker]
-        }
-      } else {
-        // eslint-disable-next-line no-console
-        console.error('inject-manifest-plugin: service worker chunk not found.')
-      }
-    })
-
+    // Build manifest from built assets.
     compiler.hooks.thisCompilation.tap(this.name, (compilation: any) => {
       compilation.hooks.processAssets.tap(
         {
@@ -165,14 +144,15 @@ export class InjectManifestPlugin {
         },
         (assets: Record<string, any>) => {
           const filenames = Object.keys(assets)
+          const workerFileNames = compilation.chunks.find(
+            (chunk) => chunk.name === this.options.chunkName,
+          )?.files
           const manifest = JSON.stringify(
             filenames
               .filter(
                 (filename) =>
                   // Remove service-worker chunk.
-                  filename !== this.outputFilename &&
-                  removeHash(filename) !== this.outputFilename &&
-                  !filename.includes('service-worker') &&
+                  !workerFileNames.includes(filename) &&
                   // Remove excludes.
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true }),
@@ -204,6 +184,22 @@ export class InjectManifestPlugin {
           })
         },
       )
+    })
+
+    // Rename service-worker asset, happens after processAssets.
+    compiler.hooks.emit.tap(this.name, (compilation: any) => {
+      const { assets } = compilation
+      const filenames = Array.isArray(assets) ? assets : Object.keys(assets)
+      const worker = filenames.find((name) => name.includes(this.options.chunkName))
+      if (worker) {
+        const asset = compilation.getAsset(worker)
+        if (asset) {
+          compilation.renameAsset(asset.name, this.outputFilename)
+        }
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('inject-manifest-plugin: service worker chunk not found.')
+      }
     })
   }
 }

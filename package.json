@@ -21,15 +21,15 @@
     "schema-utils": "version-3"
   },
   "devDependencies": {
-    "@rsbuild/core": "^0.6.8",
+    "@rsbuild/core": "^0.6.9",
     "@rspack/core": "^0.6.3",
-    "@types/node": "^20.12.7",
+    "@types/node": "^20.12.8",
     "deepmerge-ts": "^5.1.0",
     "html-webpack-plugin": "^5.6.0",
     "jest-fixture": "^4.1.0",
     "padua": "^4.0.1",
     "url-join": "^5.0.0",
-    "vitest": "^1.5.3",
+    "vitest": "^1.6.0",
     "webpack": "^5.91.0",
     "workbox-core": "^7.1.0",
     "workbox-expiration": "^7.1.0",

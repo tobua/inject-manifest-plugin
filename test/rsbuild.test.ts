@@ -47,7 +47,10 @@ test('Basic example also works with Rsbuild.', async () => {
 test('Rsbuild works with TypeScript entry.', async () => {
   prepare([
     packageJson('rsbuild'),
-    file('index.ts', 'console.log("hello world" as string)'),
+    file(
+      'index.ts',
+      'import join from "url-join"; import { clientsClaim } from "workbox-core"; clientsClaim(); console.log(join("https://www.google.com", "android"), "hello world" as string)',
+    ),
     file('service-worker.ts', "console.log('worker' as string, self.INJECT_MANIFEST_PLUGIN)"),
   ])
 
@@ -78,7 +81,7 @@ test('Rsbuild works with TypeScript entry.', async () => {
   expect(indexContents).not.toContain('as string')
 
   const manifest = findManifest(readFile('dist/service-worker.js'))
-  expect(Object.keys(manifest).length).toBe(2)
+  expect(Object.keys(manifest).length).toBe(3)
   expect(Object.keys(manifest).some((assetName) => assetName.includes('service-worker'))).toBe(
     false,
   )
