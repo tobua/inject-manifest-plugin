@@ -1,5 +1,13 @@
 import { test, expect, beforeEach, afterEach, vi } from 'vitest'
-import { registerVitest, environment, packageJson, prepare, file, readFile } from 'jest-fixture'
+import {
+  registerVitest,
+  environment,
+  packageJson,
+  prepare,
+  file,
+  readFile,
+  listFilesMatching,
+} from 'jest-fixture'
 import { existsSync } from 'fs'
 import { InjectManifestPlugin } from '../index'
 import rsbuild from './rsbuild'
@@ -85,4 +93,45 @@ test('Rsbuild works with TypeScript entry.', async () => {
   expect(Object.keys(manifest).some((assetName) => assetName.includes('service-worker'))).toBe(
     false,
   )
+})
+
+test('Works in production mode.', async () => {
+  prepare([
+    packageJson('rsbuild'),
+    file('src/index.js', 'console.log("hello world")'),
+    file('service-worker.js', "console.log('worker', self.INJECT_MANIFEST_PLUGIN)"),
+  ])
+
+  const initialEnvironment = process.env.NODE_ENV
+
+  process.env.NODE_ENV = 'production'
+
+  const buildResult = await rsbuild({
+    output: {
+      sourceMap: {
+        js: false,
+      },
+    },
+    tools: {
+      rspack: {
+        plugins: [new InjectManifestPlugin({ removeHash: true })],
+      },
+    },
+  })
+
+  expect(buildResult).toBe('success')
+  expect(existsSync('dist/static/js/index.js'))
+
+  const files = listFilesMatching('dist/static/js/*', process.cwd())
+  const indexContents = readFile(files[0])
+
+  expect(indexContents).toContain('"hello world"')
+
+  const manifest = findManifest(readFile('dist/service-worker.js'))
+  expect(Object.keys(manifest).length).toBe(2)
+  expect(Object.keys(manifest).some((assetName) => assetName.includes('service-worker'))).toBe(
+    false,
+  )
+
+  process.env.NODE_ENV = initialEnvironment
 })
