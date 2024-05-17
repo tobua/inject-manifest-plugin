@@ -144,7 +144,8 @@ export class InjectManifestPlugin {
         },
         (assets: Record<string, any>) => {
           const filenames = Object.keys(assets)
-          const workerFileNames = compilation.chunks.find(
+          // NOTE compilation.chunks is a Set in webpack and array methods lead to a deprecation warning.
+          const workerFileNames = [...compilation.chunks].find(
             (chunk) => chunk.name === this.options.chunkName,
           )?.files
           const manifest = JSON.stringify(
@@ -152,7 +153,8 @@ export class InjectManifestPlugin {
               .filter(
                 (filename) =>
                   // Remove service-worker chunk.
-                  !workerFileNames.includes(filename) &&
+                  // NOTE same Set to array conversion as for compilation.chunks.
+                  ![...workerFileNames].includes(filename) &&
                   // Remove excludes.
                   !this.options.exclude.some((matcher) =>
                     minimatch(filename, matcher, { partial: true }),
