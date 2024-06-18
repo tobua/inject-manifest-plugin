@@ -135,3 +135,49 @@ test('Works in production mode.', async () => {
 
   process.env.NODE_ENV = initialEnvironment
 })
+
+test('Worker chunk is standalone with all dependencies injected.', async () => {
+  prepare([
+    packageJson('rsbuild'),
+    file('src/index.js', 'console.log("hello world")'),
+    file(
+      'service-worker.js',
+      "import join from 'url-join'; import { clientsClaim } from 'workbox-core'; console.log('worker', self.INJECT_MANIFEST_PLUGIN, join, clientsClaim)",
+    ),
+  ])
+
+  const buildResult = await rsbuild({
+    output: {
+      sourceMap: {
+        js: false,
+      },
+    },
+    tools: {
+      rspack: {
+        plugins: [new InjectManifestPlugin()],
+      },
+    },
+    // TODO prevent chunk splitting only for service-worker chunk.
+    performance: {
+      chunkSplit: {
+        strategy: 'all-in-one',
+        override: {
+          chunks: (chunk) => chunk.name === 'service-worker',
+        },
+      },
+    },
+  })
+
+  expect(buildResult).toBe('success')
+  expect(existsSync('dist/static/js/index.js'))
+
+  const indexContents = readFile('dist/static/js/index.js')
+
+  expect(indexContents).toContain('"hello world"')
+
+  // const files = listFilesMatching('dist/static/js/*', process.cwd())
+
+  const workerContents = readFile('dist/service-worker.js')
+
+  expect(workerContents).toContain('clients.claim')
+})
